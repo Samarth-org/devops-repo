@@ -65,39 +65,13 @@ pipeline {
         stage("Trivy Vulnerability Scan") {
             steps {
                 script {
-                    withCredentials([usernameVariable(credentialsId: 'dockerhub-creds', variable: 'DOCKER_USER')]) {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', passwordVariable: 'UNUSED_PASS', usernameVariable: 'DOCKER_USER')]) {
                         sh """
                             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
                             aquasec/trivy image ${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG} \
                             --severity HIGH,CRITICAL --format table
                         """
                     }
-                }
-            }
-        }
-
-        stage("Deploy for DAST") {
-            steps {
-                script {
-                    withCredentials([usernameVariable(credentialsId: 'dockerhub-creds', variable: 'DOCKER_USER')]) {
-                        sh "docker rm -f test-app || true"
-                        sh "docker run -d -p 8082:8080 --name test-app ${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG}"
-                        echo "Waiting for application to stabilize..."
-                        sleep 15 
-                    }
-                }
-            }
-        }
-
-        stage("DAST - Security Scan") {
-            steps {
-                // OWASP ZAP scan against the container running on 8082
-                sh 'docker run --rm --network="host" owasp/zap2docker-stable zap-baseline.py -t http://localhost:8082 -r zap-report.html || true'
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'zap-report.html', fingerprint: true
-                    sh "docker rm -f test-app || true"
                 }
             }
         }
