@@ -20,6 +20,12 @@ pipeline {
                 sh 'mvn -version'
             }
         }
+        stage('Check Docker') {
+            steps {
+                sh 'which docker'
+                sh 'docker --version'
+            }
+        }
         stage("Build Application") {
             steps { sh 'mvn clean package -DskipTests' }
         }
