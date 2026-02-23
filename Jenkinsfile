@@ -3,14 +3,14 @@
 pipeline {
     agent {
         docker {
-            image 'maven:3.9.6-eclipse-temurin-17'
-            // Using root is fine for installing tools, but we must clean up
+            // This image comes pre-loaded with Maven, JDK 17, and Docker CLI
+            image 'trion/maven-docker:3.9.6-jdk17'
             args '-v /var/run/docker.sock:/var/run/docker.sock -u root'
         }
     }
 
     options {
-        // This tells Jenkins to delete the workspace BEFORE the git checkout starts
+        // Prevents the "Permission Denied" errors during checkout
         skipDefaultCheckout(true)
     }
 
@@ -24,12 +24,12 @@ pipeline {
     stages {
         stage('Cleanup & Checkout') {
             steps {
-                // 1. Manually clean the workspace inside the container (as root)
                 deleteDir()
-                // 2. Now manually trigger the checkout
                 checkout scm
                 script {
-                    sh 'curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh'
+                    // Quick verification that tools are present
+                    sh 'mvn -version'
+                    sh 'docker --version'
                     notify("Environment Ready")
                 }
             }
@@ -37,6 +37,7 @@ pipeline {
 
         stage("Build Application") {
             steps {
+                // Since you have a pom.xml at the root, this will build your project
                 sh 'mvn clean package -DskipTests'
             }
         }
@@ -46,10 +47,13 @@ pipeline {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
                         def fullImage = "${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG}"
+                        
                         sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
                         sh "docker build -t ${fullImage} ."
                         sh "docker push ${fullImage}"
                         sh "docker logout"
+                        
+                        notify("Build #${env.BUILD_NUMBER} Pushed to Hub")
                     }
                 }
             }
@@ -59,11 +63,11 @@ pipeline {
     post {
         success {
             slackSend(channel: "${SLACK_CHANNEL}", color: "good", 
-                message: "*BUILD SUCCESS* \nJob: ${env.JOB_NAME} \nBuild: #${env.BUILD_NUMBER} \nURL: ${env.BUILD_URL}")
+                message: "*BUILD SUCCESS* \nJob: ${env.JOB_NAME} \nBuild: #${env.BUILD_NUMBER}")
         }
         failure {
             slackSend(channel: "${SLACK_CHANNEL}", color: "danger", 
-                message: "*BUILD FAILED* \nJob: ${env.JOB_NAME} \nBuild: #${env.BUILD_NUMBER} \nLogs: ${env.BUILD_URL}")
+                message: "*BUILD FAILED* \nJob: ${env.JOB_NAME} \nBuild: #${env.BUILD_NUMBER}")
         }
     }
 }
