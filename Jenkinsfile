@@ -91,6 +91,7 @@ pipeline {
     agent {
         docker {
             image 'maven:3.9.6-eclipse-temurin-17'
+            // Keep -u root to allow Docker CLI installation inside the container
             args '-v /var/run/docker.sock:/var/run/docker.sock -u root'
         }
     }
@@ -99,23 +100,17 @@ pipeline {
         APP_NAME = "register-app-pipeline"
         RELEASE = "1.0.0"
         IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
-        // SLACK_CHANNEL = '#test-notify'
+        SLACK_CHANNEL = '#test-notify' // Un-commented and active
     }
 
     stages {
-        stage('Verify Environment') {
+        stage('Initialize & Clean') {
             steps {
+                // Ensure the workspace is clean of root-owned files from previous runs
+                deleteDir() 
                 script {
-                    // Install Docker CLI inside the Maven container so the sh 'docker' commands work
-                    sh '''
-                        curl -fsSL https://get.docker.com -o get-docker.sh
-                        sh get-docker.sh
-                    '''
-                    sh 'java -version'
-                    sh 'mvn -version'
-                    sh 'docker --version'
-                    
-                    // Call shared library from vars/notify.groovy
+                    // Install Docker CLI
+                    sh 'curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh'
                     notify("Environment Verified") 
                 }
             }
@@ -150,25 +145,18 @@ pipeline {
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', passwordVariable: 'UNUSED_PASS', usernameVariable: 'DOCKER_USER')]) {
-                        sh """
-                            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-                            aquasec/trivy image ${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG} \
-                            --severity HIGH,CRITICAL --format table
-                        """
+                        sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image ${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG} --severity HIGH,CRITICAL --format table"
                     }
                 }
-            }
-        }
-
-        stage("Cleanup Workspace") {
-            steps {
-                cleanWs()
-                notify("Pipeline Finished & Workspace Cleaned")
             }
         }
     }
 
     post {
+        always {
+            // This ensures workspace cleanup happens even on failure
+            cleanWs()
+        }
         success {
             slackSend(channel: "${SLACK_CHANNEL}", color: "good", 
                 message: "*BUILD SUCCESS* \nJob: ${env.JOB_NAME} \nBuild: #${env.BUILD_NUMBER} \nURL: ${env.BUILD_URL}")
