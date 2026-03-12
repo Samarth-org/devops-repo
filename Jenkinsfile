@@ -1,7 +1,9 @@
 @Library('my-shared-library') _
 
 pipeline {
-    agent any 
+   agent {
+    docker { image 'maven:3.9.9-eclipse-temurin-17' }
+}
 
     tools {
         // This must match the Name you gave in Global Tool Configuration
