@@ -1,0 +1,39 @@
+name: comp-script-shared-lib-pipeline
+on:
+  workflow_dispatch:
+env:
+  APP_NAME: lean-app
+#   # This item has no matching transformer
+#   DEPLOY_ENV: '"${env.BRANCH_NAME == ''main'' ? ''prod'' : ''staging''}"'
+jobs:
+  Setup:
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4.1.0
+    - name: clean workspace
+      shell: bash
+      run: rm -rf ${{ github.workspace }}/*
+    - name: checkout
+      uses: actions/checkout@v4.1.0
+#     # This item has no matching transformer
+#     - customLogger:
+#         isLiteral: true
+#         value: Setup Complete
+  Complex_Script_Execution:
+    name: Complex Script Execution
+    runs-on: ubuntu-latest
+    needs: Setup
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4.1.0
+#     # 'script' was not transformed because there is no suitable equivalent in GitHub Actions
+#     - name: script
+#       arguments:
+#       - key: scriptBlock
+#         value:
+#           isLiteral: true
+#           value: |-
+#             sh "chmod +x scripts/deploy-logic.sh"
+#                                 // Practice passing variables to a script
+#                                 sh "./scripts/deploy-logic.sh ${{ env.DEPLOY_ENV }}"
