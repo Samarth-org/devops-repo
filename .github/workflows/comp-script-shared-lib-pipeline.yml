@@ -3,7 +3,8 @@ on:
   workflow_dispatch:
 env:
   APP_NAME: lean-app
-  DEPLOY_ENV: "${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}"
+#   # This item has no matching transformer
+#   DEPLOY_ENV: '"${env.BRANCH_NAME == ''main'' ? ''prod'' : ''staging''}"'
 jobs:
   Setup:
     runs-on: ubuntu-latest
@@ -15,10 +16,10 @@ jobs:
       run: rm -rf ${{ github.workspace }}/*
     - name: checkout
       uses: actions/checkout@v4.1.0
-    - name: Notify - Setup Complete
-      uses: Samarth-org/devops-repo/.github/workflows/reusable.yml@main
-      with:
-        status: Setup Complete
+#     # This item has no matching transformer
+#     - customLogger:
+#         isLiteral: true
+#         value: Setup Complete
   Complex_Script_Execution:
     name: Complex Script Execution
     runs-on: ubuntu-latest
@@ -26,8 +27,13 @@ jobs:
     steps:
     - name: checkout
       uses: actions/checkout@v4.1.0
-    - name: Run script
-      shell: bash
-      run: |-
-        chmod +x scripts/deploy-logic.sh
-        ./scripts/deploy-logic.sh ${{ env.DEPLOY_ENV }}
+#     # 'script' was not transformed because there is no suitable equivalent in GitHub Actions
+#     - name: script
+#       arguments:
+#       - key: scriptBlock
+#         value:
+#           isLiteral: true
+#           value: |-
+#             sh "chmod +x scripts/deploy-logic.sh"
+#                                 // Practice passing variables to a script
+#                                 sh "./scripts/deploy-logic.sh ${{ env.DEPLOY_ENV }}"
