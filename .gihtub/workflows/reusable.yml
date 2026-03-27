@@ -1,0 +1,20 @@
+name: Pipeline Notification
+
+on:
+  workflow_call:
+    inputs:
+      status:
+        description: "The status of the pipeline stage"
+        required: true
+        type: string
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pipeline Stage Notification
+        run: |
+          echo "--- SHARED LIBRARY NOTIFICATION ---"
+          echo "The pipeline stage has finished with status: ${{ inputs.status }}"
+          echo "Current Build: ${{ github.run_number }}"
+          echo "------------------------------------"
